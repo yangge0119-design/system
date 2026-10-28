@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>YANGDO 自动报价系统 v1</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#18202b;--muted:#6b7280;--line:#e5e7eb;--accent:#111827;--ok:#166534;--warn:#9a3412}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1280px;margin:0 auto;padding:24px}.hero{display:flex;gap:16px;align-items:end;justify-content:space-between;margin-bottom:18px}.hero h1{margin:0;font-size:28px}.sub{color:var(--muted);margin-top:6px}.pill{background:#eef2ff;border:1px solid #dbeafe;border-radius:999px;padding:8px 12px;font-size:13px}
+.grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(15,23,42,.04)}h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:18px 0 10px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}.formgrid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.full{grid-column:1/-1}
+label{display:block;font-size:12px;color:#4b5563;margin:0 0 5px}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#111827;font:inherit}textarea{min-height:120px;resize:vertical}.hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+.btns{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}button{border:0;border-radius:10px;padding:10px 14px;font-weight:650;cursor:pointer;background:#111827;color:#fff}button.secondary{background:#fff;color:#111827;border:1px solid #d1d5db}button.good{background:#166534}button.warn{background:#9a3412}.status{padding:10px 12px;border-radius:10px;font-size:13px;background:#f3f4f6;margin-top:12px}.status.ok{background:#ecfdf5;color:#166534}.status.warn{background:#fff7ed;color:#9a3412}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.kpi{border:1px solid var(--line);border-radius:12px;padding:12px}.kpi b{display:block;font-size:20px;margin-top:4px}.kpi span{font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:middle}th{background:#f8fafc;font-size:12px;color:#475569;position:sticky;top:0}.num{text-align:right}.bom input{padding:7px;border-radius:8px;min-width:70px}.scroll{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px}.summary{white-space:pre-wrap;background:#0b1220;color:#e5e7eb;padding:14px;border-radius:12px;font-size:13px;line-height:1.65}.note{border-left:3px solid #94a3b8;padding:8px 10px;color:#475569;background:#f8fafc;border-radius:6px;margin:10px 0;font-size:13px}.quote-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}.quote-title{font-size:22px;font-weight:800}.small{font-size:12px;color:var(--muted)}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.formgrid,.formgrid.three{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+@media print{body{background:#fff}.no-print,.hero,.left-card{display:none!important}.wrap{padding:0;max-width:none}.grid{display:block}.card{border:0;box-shadow:none;padding:0}.scroll{max-height:none;overflow:visible;border:0}th{position:static}.quote-card{display:block!important}.summary{background:#fff;color:#111;border:1px solid #ddd}.kpis{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div><h1>YANGDO 自动报价系统 v1</h1><div class="sub">客户数据 → 自动解析 → 估算材料 → 调整价格 → 生成报价</div></div>
+    <div class="pill">本地运行 · 数据不会上传</div>
+  </div>
+
+  <div class="grid">
+    <section class="card left-card">
+      <h2>1. 粘贴客户原始数据</h2>
+      <textarea id="raw" placeholder="示例：Turkey, Kayseri. Apple orchard 7000 m2, 100x70m, tree height 2.8m, row spacing 4m, plant spacing 1.5m, 380V electricity available."></textarea>
+      <div class="btns"><button onclick="parseRaw()">自动识别并填表</button><button class="secondary" onclick="loadDemo()">载入示例</button><button class="secondary" onclick="clearAll()">清空</button></div>
+      <div class="hint">支持中/英/土耳其语常见字段；识别不准时直接在下面改。1 dönüm 按 1000 m² 处理。</div>
+
+      <h3>2. 项目参数</h3>
+      <div class="formgrid">
+        <div><label>客户 / 项目名</label><input id="project" placeholder="Client / Project" /></div>
+        <div><label>国家 / 城市</label><input id="location" placeholder="Türkiye / Kayseri" /></div>
+        <div><label>作物</label><input id="crop" placeholder="Apple / Walnut / Tomato..." /></div>
+        <div><label>项目类型</label><select id="type"><option value="orchard">露天果园</option><option value="greenhouse">温室</option><option value="openfield">露天种植</option></select></div>
+        <div><label>面积 m²</label><input id="area" type="number" step="0.01" /></div>
+        <div><label>长度 m</label><input id="length" type="number" step="0.01" /></div>
+        <div><label>宽度 m</label><input id="width" type="number" step="0.01" /></div>
+        <div><label>树高 / 作物高度 m</label><input id="height" type="number" step="0.01" /></div>
+        <div><label>行距 m</label><input id="rowSpacing" type="number" step="0.01" /></div>
+        <div><label>株距 m</label><input id="plantSpacing" type="number" step="0.01" /></div>
+        <div><label>供电</label><select id="power"><option value="380">有 380V</option><option value="none">无电 / 柴油机</option></select></div>
+        <div><label>臭氧水机</label><select id="ozone"><option value="no">不含</option><option value="yes">包含</option></select></div>
+        <div><label>分区数量（0=自动建议）</label><input id="zones" type="number" value="0" min="0" /></div>
+        <div><label>泵房位置</label><input id="pumpPos" placeholder="左下 / 右侧建筑..." /></div>
+        <div class="full"><label>备注</label><textarea id="notes" style="min-height:75px" placeholder="坡度、水源、特殊安装要求等"></textarea></div>
+      </div>
+
+      <h3>3. 设计参数（可调）</h3>
+      <div class="formgrid three">
+        <div><label>喷头覆盖 m²/头</label><input id="nozzleCoverage" type="number" value="4" step="0.1" /></div>
+        <div><label>支管间距 m</label><input id="lineSpacing" type="number" value="4" step="0.1" /></div>
+        <div><label>建议每区面积 m²</label><input id="zoneArea" type="number" value="1500" step="50" /></div>
+        <div><label>接头余量 %</label><input id="connectorPct" type="number" value="8" step="1" /></div>
+        <div><label>管路余量 %</label><input id="pipePct" type="number" value="5" step="1" /></div>
+        <div><label>包装/备件 %</label><input id="sparePct" type="number" value="2" step="0.5" /></div>
+      </div>
+      <div class="note">重要：自动数量是“第一版设计建议”，不是最终工程图。坡地、异形地、超长管路、特殊压力、跨棚结构等必须人工复核。</div>
+      <div class="btns"><button class="good" onclick="calculate()">生成材料与报价</button></div>
+    </section>
+
+    <section class="card quote-card">
+      <div class="quote-head"><div><div class="quote-title">QUOTATION / 报价单</div><div class="small" id="quoteMeta">YANGDO · Automatic Agricultural Spraying System</div></div><div class="no-print"><select id="lang" onchange="renderBom()"><option value="en">English</option><option value="tr">Türkçe</option><option value="zh">中文</option></select></div></div>
+      <div class="kpis">
+        <div class="kpi"><span>面积</span><b id="kArea">0</b></div>
+        <div class="kpi"><span>喷头</span><b id="kNozzles">0</b></div>
+        <div class="kpi"><span>分区</span><b id="kZones">0</b></div>
+        <div class="kpi"><span>BOM合计 USD</span><b id="kTotal">$0</b></div>
+      </div>
+      <div id="readyStatus" class="status warn">请先填写项目数据并生成报价。</div>
+      <div class="scroll" style="margin-top:12px">
+        <table class="bom"><thead><tr><th>#</th><th>Item</th><th>Unit</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Amount</th></tr></thead><tbody id="bomBody"></tbody></table>
+      </div>
+
+      <h3>价格库</h3>
+      <div class="hint">第一次把你的真实美元单价录进去，点“保存价格库”。以后打开这个文件仍会保留在当前浏览器。</div>
+      <div class="btns no-print"><button class="secondary" onclick="savePrices()">保存价格库</button><button class="secondary" onclick="resetPrices()">清空价格库</button><button class="secondary" onclick="exportCSV()">导出 CSV</button><button class="secondary" onclick="copySummary()">复制报价摘要</button><button onclick="window.print()">打印 / 存PDF</button></div>
+
+      <h3>快速预算区间（仅用于首轮沟通）</h3>
+      <div class="summary" id="quickEstimate">等待计算...</div>
+
+      <h3>标准条款</h3>
+      <div class="summary" id="terms">30% deposit, 70% balance after production and packing.\nFactory: China.\nInstallation: CAD drawing + video guidance; on-site team optional.\nFinal engineering quantity is subject to confirmed layout, terrain, water source and pressure calculation.</div>
+    </section>
+  </div>
+</div>
+<script>
+const translations={
+ filter:{en:'Stainless steel filter',tr:'Paslanmaz çelik filtre',zh:'不锈钢过滤器'},
+ hostElectric:{en:'Electric pump & main unit (380V)',tr:'Elektrikli pompa ve ana ünite (380V)',zh:'电机泵组及主机（380V）'},
+ hostDiesel:{en:'Diesel pump & main unit',tr:'Dizel pompa ve ana ünite',zh:'柴油泵组及主机'},
+ controller:{en:'Automatic controller',tr:'Otomatik kontrol ünitesi',zh:'自动控制器'},
+ mainPipe:{en:'Main pipe',tr:'Ana boru',zh:'主管'},
+ branchPipe:{en:'Branch pipe',tr:'Yan boru',zh:'支管'},
+ nozzle:{en:'Fine mist nozzle',tr:'İnce sis nozulu',zh:'细雾喷头'},
+ valve:{en:'Zone valve',tr:'Bölge vanası',zh:'分区阀'},
+ connector:{en:'Connectors / fittings',tr:'Bağlantı parçaları',zh:'接头/连接件'},
+ spare:{en:'Spare parts & packing allowance',tr:'Yedek parça ve paketleme payı',zh:'备件及包装余量'},
+ ozone:{en:'Ozone water machine (optional)',tr:'Ozonlu su makinesi (opsiyonel)',zh:'臭氧水机（可选）'}
+};
+const units={set:{en:'set',tr:'set',zh:'套'},m:{en:'m',tr:'m',zh:'米'},pc:{en:'pc',tr:'adet',zh:'个'},lot:{en:'lot',tr:'lot',zh:'批'}};
+let bom=[];
+const defaultPrices={filter:0,hostElectric:0,hostDiesel:0,controller:0,mainPipe:0,branchPipe:0,nozzle:0,valve:0,connector:0,spare:0,ozone:7500};
+function n(id){return parseFloat(document.getElementById(id).value)||0}
+function ceil(x){return Math.ceil(Math.max(0,x))}
+function money(x){return '$'+(x||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+function getPrices(){try{return {...defaultPrices,...JSON.parse(localStorage.getItem('yangdo_prices')||'{}')}}catch(e){return {...defaultPrices}}}
+function savePrices(){const p={};document.querySelectorAll('[data-price]').forEach(el=>p[el.dataset.price]=parseFloat(el.value)||0);localStorage.setItem('yangdo_prices',JSON.stringify(p));alert('价格库已保存到当前浏览器。')}
+function resetPrices(){localStorage.removeItem('yangdo_prices');renderBom()}
+function parseRaw(){
+ const t=document.getElementById('raw').value.replace(/,/g,'.');
+ let m;
+ m=t.match(/(\d+(?:\.\d+)?)\s*(?:m2|m²|sqm|square\s*meters?)/i); if(m)document.getElementById('area').value=m[1];
+ let d=t.match(/(\d+(?:\.\d+)?)\s*(?:d[oö]n[uü]m|donum)/i); if(d&&!m)document.getElementById('area').value=(parseFloat(d[1])*1000).toFixed(0);
+ let dims=t.match(/(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:m|metre|meter)?/i); if(dims){document.getElementById('length').value=dims[1];document.getElementById('width').value=dims[2];if(!document.getElementById('area').value)document.getElementById('area').value=(parseFloat(dims[1])*parseFloat(dims[2])).toFixed(0)}
+ const hp=[/(?:tree\s*height|height|ağaç\s*boyu|ağaç\s*yüksekliği|树高|高度)\D{0,10}(\d+(?:\.\d+)?)\s*m/i,/(\d+(?:\.\d+)?)\s*m\s*(?:tree\s*height|ağaç|树高)/i];for(const r of hp){m=t.match(r);if(m){document.getElementById('height').value=m[1];break}}
+ const rp=[/(?:row\s*spacing|sıra\s*arası|行距)\D{0,10}(\d+(?:\.\d+)?)\s*m/i];for(const r of rp){m=t.match(r);if(m){document.getElementById('rowSpacing').value=m[1];break}}
+ const pp=[/(?:plant\s*spacing|tree\s*spacing|sıra\s*üzeri|株距)\D{0,10}(\d+(?:\.\d+)?)\s*m/i];for(const r of pp){m=t.match(r);if(m){document.getElementById('plantSpacing').value=m[1];break}}
+ if(/380\s*v/i.test(t))document.getElementById('power').value='380'; if(/no\s*electric|without\s*electric|elektrik\s*yok|无电/i.test(t))document.getElementById('power').value='none';
+ const crops=['apple','walnut','hazelnut','grape','orange','citrus','cherry','peach','pear','tomato','cucumber','banana','pistachio','lemon','苹果','核桃','榛子','葡萄','柑橘','樱桃','桃','梨','番茄','黄瓜','香蕉','开心果','柠檬']; for(const c of crops){if(t.toLowerCase().includes(c.toLowerCase())){document.getElementById('crop').value=c;break}}
+ if(/greenhouse|sera|温室/i.test(t))document.getElementById('type').value='greenhouse';
+ const loc=[];['Turkey','Türkiye','Kayseri','Isparta','Antalya','Mersin','Denizli','Elmalı','Yahyalı','Bolivia','Cochabamba','Kazakhstan','Almaty','Azerbaijan','Baku','土耳其','玻利维亚','哈萨克斯坦','阿塞拜疆'].forEach(x=>{if(t.toLowerCase().includes(x.toLowerCase()))loc.push(x)}); if(loc.length)document.getElementById('location').value=[...new Set(loc)].join(' / ');
+ calculate();
+}
+function calculate(){
+ let area=n('area'),L=n('length'),W=n('width'); if(!area&&L&&W){area=L*W;document.getElementById('area').value=area.toFixed(0)}
+ if(!area){alert('至少需要面积，或长度×宽度。');return}
+ const cov=Math.max(.1,n('nozzleCoverage')||4), line=Math.max(.1,n('lineSpacing')||4), zoneArea=Math.max(100,n('zoneArea')||1500); const pipeExtra=1+n('pipePct')/100, connExtra=1+n('connectorPct')/100;
+ let mainPipe=0, branchPipe=0, lineCount=0;
+ if(L&&W){lineCount=ceil(W/line)+1;branchPipe=lineCount*L*pipeExtra;mainPipe=(L+W)*pipeExtra}else{const s=Math.sqrt(area);lineCount=ceil(s/line)+1;branchPipe=(area/line)*pipeExtra;mainPipe=(2*s)*pipeExtra}
+ const nozzles=ceil(area/cov); const zones=n('zones')>0?ceil(n('zones')):ceil(area/zoneArea); const connectors=ceil((nozzles+lineCount*2+zones*2)*connExtra); const p=getPrices();
+ bom=[
+  {key:'filter',unit:'set',qty:1,price:p.filter},
+  {key:document.getElementById('power').value==='380'?'hostElectric':'hostDiesel',unit:'set',qty:1,price:p[document.getElementById('power').value==='380'?'hostElectric':'hostDiesel']},
+  {key:'controller',unit:'set',qty:1,price:p.controller},
+  {key:'mainPipe',unit:'m',qty:ceil(mainPipe),price:p.mainPipe},
+  {key:'branchPipe',unit:'m',qty:ceil(branchPipe),price:p.branchPipe},
+  {key:'nozzle',unit:'pc',qty:nozzles,price:p.nozzle},
+  {key:'valve',unit:'pc',qty:zones,price:p.valve},
+  {key:'connector',unit:'pc',qty:connectors,price:p.connector}
+ ];
+ if(document.getElementById('ozone').value==='yes')bom.push({key:'ozone',unit:'set',qty:1,price:p.ozone});
+ const pre=bom.reduce((s,r)=>s+r.qty*r.price,0), sparePct=n('sparePct')/100; if(sparePct>0)bom.push({key:'spare',unit:'lot',qty:1,price:pre*sparePct});
+ document.getElementById('kArea').textContent=area.toLocaleString()+' m²';document.getElementById('kNozzles').textContent=nozzles.toLocaleString();document.getElementById('kZones').textContent=zones;
+ document.getElementById('quoteMeta').textContent=(document.getElementById('project').value||'YANGDO')+' · '+(document.getElementById('location').value||'')+' · '+(document.getElementById('crop').value||'Automatic Spraying System');
+ renderBom();renderQuick(area);renderTerms();
+}
+function renderBom(){
+ const lang=document.getElementById('lang').value||'en',tbody=document.getElementById('bomBody');tbody.innerHTML='';
+ bom.forEach((r,i)=>{const tr=document.createElement('tr');const name=translations[r.key]?.[lang]||r.key;const unit=units[r.unit]?.[lang]||r.unit;tr.innerHTML=`<td>${i+1}</td><td>${name}</td><td>${unit}</td><td class="num"><input data-qty="${i}" type="number" step="1" value="${r.qty}" oninput="updateRow(${i},'qty',this.value)"></td><td class="num"><input data-price="${r.key}" type="number" step="0.01" value="${(+r.price).toFixed(2)}" oninput="updateRow(${i},'price',this.value)"></td><td class="num" id="amt${i}">${money(r.qty*r.price)}</td>`;tbody.appendChild(tr)}); updateTotals();
+}
+function updateRow(i,k,v){bom[i][k]=parseFloat(v)||0;document.getElementById('amt'+i).textContent=money(bom[i].qty*bom[i].price);updateTotals()}
+function updateTotals(){const total=bom.reduce((s,r)=>s+r.qty*r.price,0);document.getElementById('kTotal').textContent=money(total);const core=bom.filter(x=>!['spare'].includes(x.key));const missing=core.filter(x=>x.price<=0).map(x=>translations[x.key].zh);const st=document.getElementById('readyStatus');if(bom.length&&missing.length===0){st.className='status ok';st.textContent='价格库完整：当前报价可作为材料报价草案，仍需工程复核。'}else if(bom.length){st.className='status warn';st.textContent='价格库未完整：缺少 '+missing.join('、')+' 的单价。当前仅能看材料数量与快速预算。'}}
+function renderQuick(area){const h=n('height'),r=n('rowSpacing');let low=null,high=null,desc='';if(document.getElementById('type').value==='orchard'){if((h>0&&h<=3)&&(r===0||r<=4)){low=.6;high=.8;desc='矮树/密植参考'}else{low=.8;high=1.2;desc='高树/宽植参考'}}
+ const flow=document.getElementById('type').value==='greenhouse'?'约 5 t/h（参考）':'约 8 t/h（参考）';const dims=n('length')&&n('width')?`${n('length')} × ${n('width')} m`:'未提供完整长宽';let text=`项目：${document.getElementById('project').value||'-'}\n地点：${document.getElementById('location').value||'-'}\n作物：${document.getElementById('crop').value||'-'}\n面积：${area.toLocaleString()} m²\n尺寸：${dims}\n建议水量：${flow}`;if(low!==null){text+=`\n\n${desc}：USD ${low.toFixed(1)}–${high.toFixed(1)}/m²\n首轮预算区间：USD ${(area*low).toLocaleString()} – ${(area*high).toLocaleString()}\n注意：此区间只用于前期筛选客户，不能替代材料清单报价。`}else{text+='\n\n温室/特殊项目不自动套果园单价，请以材料清单与工程设计为准。'}document.getElementById('quickEstimate').textContent=text}
+function renderTerms(){const lang=document.getElementById('lang').value;const t={en:'30% deposit, 70% balance after production and packing.\nFactory: China.\nInstallation: CAD drawing + video guidance; on-site team optional.\nMain pipe is normally routed along the edge and not buried.\nFinal quantities are subject to confirmed layout, terrain, water source and pressure calculation.',tr:'%30 peşinat, üretim ve paketleme sonrası %70 bakiye.\nFabrika: Çin.\nKurulum: CAD çizimi + video desteği; yerinde ekip opsiyoneldir.\nAna boru normalde arazi kenarından gider ve gömülmez.\nNihai miktarlar; kesin yerleşim, arazi, su kaynağı ve basınç hesabına göre teyit edilir.',zh:'30%预付款，生产并打包后支付70%尾款。\n工厂：中国。\n安装：提供CAD图纸+视频指导；可选现场团队。\n主管通常沿地块边缘布置，不埋地。\n最终数量以确认后的地形、布局、水源及压力计算为准。'};document.getElementById('terms').textContent=t[lang]}
+function exportCSV(){if(!bom.length){alert('请先生成报价');return}const lang=document.getElementById('lang').value;let rows=[['No','Item','Unit','Qty','Unit Price USD','Amount USD']];bom.forEach((r,i)=>rows.push([i+1,translations[r.key][lang],units[r.unit][lang],r.qty,r.price,(r.qty*r.price).toFixed(2)]));rows.push(['','','','','TOTAL',bom.reduce((s,r)=>s+r.qty*r.price,0).toFixed(2)]);const csv='\ufeff'+rows.map(row=>row.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=(document.getElementById('project').value||'YANGDO_quotation')+'.csv';a.click();URL.revokeObjectURL(a.href)}
+function copySummary(){const total=bom.reduce((s,r)=>s+r.qty*r.price,0), lines=bom.map((r,i)=>`${i+1}. ${translations[r.key].en}: ${r.qty} ${units[r.unit].en} × $${r.price.toFixed(2)} = ${money(r.qty*r.price)}`).join('\n');const txt=`YANGDO QUOTATION\nProject: ${document.getElementById('project').value||'-'}\nLocation: ${document.getElementById('location').value||'-'}\nArea: ${n('area')} m²\n\n${lines}\n\nTOTAL: ${money(total)}\n\n30% deposit / 70% balance after production and packing.`;navigator.clipboard.writeText(txt).then(()=>alert('报价摘要已复制。')).catch(()=>prompt('请复制：',txt))}
+function loadDemo(){document.getElementById('raw').value='Turkey, Kayseri Yahyalı. Apple orchard 7000 m2, 100x70m. Tree height 2.8m, row spacing 4m, plant spacing 1.5m. 380V electricity available.';parseRaw()}
+function clearAll(){['raw','project','location','crop','area','length','width','height','rowSpacing','plantSpacing','pumpPos','notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('zones').value=0;bom=[];renderBom();document.getElementById('quickEstimate').textContent='等待计算...'}
+window.addEventListener('load',()=>{document.getElementById('lang').addEventListener('change',renderTerms);renderTerms();});
+</script>
+</body>
+</html>
